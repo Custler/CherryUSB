@@ -68,7 +68,7 @@ CherryUSB Device 协议栈当前实现以下功能：
 - 支持 USB2.0 全速和高速设备，USB3.0 超速设备
 - 支持端点中断注册功能，porting 给用户自己处理中断里的数据
 - 支持复合设备
-- 支持 Communication Device Class (CDC)
+- 支持 Communication Device Class (CDC_ACM, CDC_ECM)
 - 支持 Human Interface Device (HID)
 - 支持 Mass Storage Class (MSC)
 - 支持 USB VIDEO CLASS (UVC1.0、UVC1.5)
@@ -101,13 +101,14 @@ CherryUSB Host 协议栈当前实现以下功能：
 - 支持阻塞式传输和异步传输
 - 支持复合设备
 - 支持多级 HUB,最高可拓展到 7 级
-- 支持 Communication Device Class (CDC)
+- 支持 Communication Device Class (CDC_ACM, CDC_ECM)
 - 支持 Human Interface Device (HID)
 - 支持 Mass Storage Class (MSC)
 - Support USB Video CLASS
 - Support USB Audio CLASS
 - 支持 Remote NDIS (RNDIS)
 - 支持 Vendor 类 class
+- 支持 USB modeswitch
 
 同时，CherryUSB Host 协议栈还提供了 lsusb 的功能，借助 shell 插件可以查看所有挂载设备的信息，包括外部 hub 上的设备的信息。
 
@@ -142,7 +143,6 @@ x 受以下宏影响：
 #define CONFIG_USBHOST_MAX_MSC_CLASS     2
 #define CONFIG_USBHOST_MAX_AUDIO_CLASS   1
 #define CONFIG_USBHOST_MAX_VIDEO_CLASS   1
-#define CONFIG_USBHOST_MAX_RNDIS_CLASS   1
 
 ```
 
@@ -168,7 +168,8 @@ USB 基本知识点与 CherryUSB Device 协议栈是如何编写的，参考 [Ch
 |HPMicro    |  HPM6750 | hpm/ehci |[hpm_sdk](https://github.com/CherryUSB/cherryusb_hpmicro)| v0.10.1 |
 |Essemi    |  ES32F36xx | musb |[es32f369_repo](https://github.com/CherryUSB/cherryusb_es32)|≤ v0.10.1 |
 |AllwinnerTech    |  F1C100S/F1C200S | musb |[cherryusb_rtt_f1c100s](https://github.com/CherryUSB/cherryusb_rtt_f1c100s)|≤ v0.10.1 |
-|Phytium |  e2000 | xhci |[phytium_repo](https://gitee.com/phytium_embedded/phytium-free-rtos-sdk)|v0.9.0 |
+|Phytium |  e2000 | xhci |[phytium_repo](https://gitee.com/phytium_embedded/phytium-free-rtos-sdk)|v0.10.1  |
+|Phytium |  e2000 | pusb2 |[phytium_repo](https://gitee.com/phytium_embedded/phytium-free-rtos-sdk)|v0.10.1 |
 |Raspberry pi |  rp2040 | rp2040 |[pico-examples](https://github.com/CherryUSB/pico-examples)|≤ v0.10.1 |
 |WCH    |  CH32V307/ch58x | ch32_usbfs/ch32_usbhs/ch58x |[wch_repo](https://github.com/CherryUSB/cherryusb_wch)|≤ v0.10.1 |
 |Nordicsemi |  Nrf52840 | nrf5x |[nrf5x_repo](https://github.com/CherryUSB/cherryusb_nrf5x)|≤ v0.10.1 |
