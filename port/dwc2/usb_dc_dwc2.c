@@ -51,24 +51,19 @@
 #endif
 // clang-format on
 
-#define FS_PORT 0
-#define HS_PORT 1
-
-#ifndef CONFIG_USB_DWC2_PORT
-#error "please select CONFIG_USB_DWC2_PORT with FS_PORT or HS_PORT"
-#endif
-
-#if CONFIG_USB_DWC2_PORT == FS_PORT
 #ifndef USBD_IRQHandler
-#define USBD_IRQHandler OTG_FS_IRQHandler
+#error "please define USBD_IRQHandler in usb_config.h"
 #endif
 
-#ifndef USB_BASE
-#define USB_BASE (0x50000000UL)
+#ifndef USBD_BASE
+#error "please define USBD_BASE in usb_config.h"
 #endif
 
-#define USB_RAM_SIZE 1280 /* define with minimum value*/
+#ifndef CONFIG_USB_DWC2_RAM_SIZE
+#error "please define CONFIG_USB_DWC2_RAM_SIZE in usb_config.h, only support 1280 or 4096"
+#endif
 
+#if CONFIG_USB_DWC2_RAM_SIZE == 1280
 /*FIFO sizes in bytes (total available memory for FIFOs is 1.25KB )*/
 #ifndef CONFIG_USB_DWC2_RX_FIFO_SIZE
 #define CONFIG_USB_DWC2_RX_FIFO_SIZE (512)
@@ -98,21 +93,11 @@
 #define CONFIG_USB_DWC2_TX5_FIFO_SIZE (128)
 #endif
 
-#ifndef USB_NUM_BIDIR_ENDPOINTS
-#define USB_NUM_BIDIR_ENDPOINTS 4 /* define with minimum value*/
+#ifndef CONFIG_USBDEV_EP_NUM
+#define CONFIG_USBDEV_EP_NUM 4 /* define with minimum value*/
 #endif
 
-#else
-
-#ifndef USBD_IRQHandler
-#define USBD_IRQHandler OTG_HS_IRQHandler
-#endif
-
-#ifndef USB_BASE
-#define USB_BASE (0x40040000UL)
-#endif
-
-#define USB_RAM_SIZE 4096 /* define with minimum value*/
+#elif CONFIG_USB_DWC2_RAM_SIZE == 4096
 
 #define CONFIG_USB_DWC2_DMA_ENABLE
 
@@ -149,18 +134,20 @@
 #define CONFIG_USB_DWC2_TX5_FIFO_SIZE (256)
 #endif
 
-#ifndef USB_NUM_BIDIR_ENDPOINTS
-#define USB_NUM_BIDIR_ENDPOINTS 6 /* define with minimum value*/
+#ifndef CONFIG_USBDEV_EP_NUM
+#define CONFIG_USBDEV_EP_NUM 6 /* define with minimum value*/
 #endif
 
+#else
+#error "Unsupported CONFIG_USB_DWC2_RAM_SIZE value"
 #endif
 
-#define USB_OTG_GLB      ((USB_OTG_GlobalTypeDef *)(USB_BASE))
-#define USB_OTG_DEV      ((USB_OTG_DeviceTypeDef *)(USB_BASE + USB_OTG_DEVICE_BASE))
-#define USB_OTG_PCGCCTL  *(__IO uint32_t *)((uint32_t)USB_BASE + USB_OTG_PCGCCTL_BASE)
-#define USB_OTG_INEP(i)  ((USB_OTG_INEndpointTypeDef *)(USB_BASE + USB_OTG_IN_ENDPOINT_BASE + ((i)*USB_OTG_EP_REG_SIZE)))
-#define USB_OTG_OUTEP(i) ((USB_OTG_OUTEndpointTypeDef *)(USB_BASE + USB_OTG_OUT_ENDPOINT_BASE + ((i)*USB_OTG_EP_REG_SIZE)))
-#define USB_OTG_FIFO(i)  *(__IO uint32_t *)(USB_BASE + USB_OTG_FIFO_BASE + ((i)*USB_OTG_FIFO_SIZE))
+#define USB_OTG_GLB      ((USB_OTG_GlobalTypeDef *)(USBD_BASE))
+#define USB_OTG_DEV      ((USB_OTG_DeviceTypeDef *)(USBD_BASE + USB_OTG_DEVICE_BASE))
+#define USB_OTG_PCGCCTL  *(__IO uint32_t *)((uint32_t)USBD_BASE + USB_OTG_PCGCCTL_BASE)
+#define USB_OTG_INEP(i)  ((USB_OTG_INEndpointTypeDef *)(USBD_BASE + USB_OTG_IN_ENDPOINT_BASE + ((i)*USB_OTG_EP_REG_SIZE)))
+#define USB_OTG_OUTEP(i) ((USB_OTG_OUTEndpointTypeDef *)(USBD_BASE + USB_OTG_OUT_ENDPOINT_BASE + ((i)*USB_OTG_EP_REG_SIZE)))
+#define USB_OTG_FIFO(i)  *(__IO uint32_t *)(USBD_BASE + USB_OTG_FIFO_BASE + ((i)*USB_OTG_FIFO_SIZE))
 
 extern uint32_t SystemCoreClock;
 
@@ -177,8 +164,8 @@ struct dwc2_ep_state {
 /* Driver state */
 USB_NOCACHE_RAM_SECTION struct dwc2_udc {
     __attribute__((aligned(32))) struct usb_setup_packet setup;
-    struct dwc2_ep_state in_ep[USB_NUM_BIDIR_ENDPOINTS];  /*!< IN endpoint parameters*/
-    struct dwc2_ep_state out_ep[USB_NUM_BIDIR_ENDPOINTS]; /*!< OUT endpoint parameters */
+    struct dwc2_ep_state in_ep[CONFIG_USBDEV_EP_NUM];  /*!< IN endpoint parameters*/
+    struct dwc2_ep_state out_ep[CONFIG_USBDEV_EP_NUM]; /*!< OUT endpoint parameters */
 } g_dwc2_udc;
 
 static inline int dwc2_reset(void)
@@ -574,8 +561,20 @@ int usb_dc_init(void)
     USB_LOG_INFO("GHWCFG4:%08x\r\n", USB_OTG_GLB->GHWCFG4);
 
     USB_LOG_INFO("dwc2 fsphy type:%d, hsphy type:%d, dma support:%d\r\n", fsphy_type, hsphy_type, dma_support);
-    USB_LOG_INFO("dwc2 has %d endpoints, default config: %d endpoints\r\n", endpoints, USB_NUM_BIDIR_ENDPOINTS);
+    USB_LOG_INFO("dwc2 has %d endpoints, default config: %d endpoints\r\n", endpoints, CONFIG_USBDEV_EP_NUM);
     USB_LOG_INFO("=================================\r\n");
+
+    if (endpoints < CONFIG_USBDEV_EP_NUM) {
+        USB_LOG_ERR("dwc2 has less endpoints than config, please check\r\n");
+        while (1) {
+        }
+    }
+
+    if ((hsphy_type == 0) && (CONFIG_USB_DWC2_RAM_SIZE != 1280)) {
+        USB_LOG_ERR("dwc2 hsphy type is 0, but ram size is not 1280, please check\r\n");
+        while (1) {
+        }
+    }
 
     USB_OTG_DEV->DCTL |= USB_OTG_DCTL_SDIS;
 
@@ -600,19 +599,16 @@ int usb_dc_init(void)
     /* Restart the Phy Clock */
     USB_OTG_PCGCCTL = 0U;
 
-    /* Device mode configuration */
-    USB_OTG_DEV->DCFG |= DCFG_FRAME_INTERVAL_80;
-
-#if CONFIG_USB_DWC2_PORT == HS_PORT
+    /* Device speed configuration */
+    USB_OTG_DEV->DCFG &= ~USB_OTG_DCFG_DSPD;
 #if defined(CONFIG_USB_HS)
-    /* Set Core speed to High speed mode */
     USB_OTG_DEV->DCFG |= USB_OTG_SPEED_HIGH;
 #else
-
-    USB_OTG_DEV->DCFG |= USB_OTG_SPEED_HIGH_IN_FULL;
-#endif
-#else
-    USB_OTG_DEV->DCFG |= USB_OTG_SPEED_FULL;
+    if (hsphy_type == 0) {
+        USB_OTG_DEV->DCFG |= USB_OTG_SPEED_FULL;
+    } else {
+        USB_OTG_DEV->DCFG |= USB_OTG_SPEED_HIGH_IN_FULL;
+    }
 #endif
 
     ret = dwc2_flush_txfifo(0x10U);
@@ -659,19 +655,19 @@ int usb_dc_init(void)
     dwc2_set_txfifo(1, CONFIG_USB_DWC2_TX1_FIFO_SIZE / 4);
     dwc2_set_txfifo(2, CONFIG_USB_DWC2_TX2_FIFO_SIZE / 4);
     dwc2_set_txfifo(3, CONFIG_USB_DWC2_TX3_FIFO_SIZE / 4);
-#if USB_NUM_BIDIR_ENDPOINTS > 4
+#if CONFIG_USBDEV_EP_NUM > 4
     dwc2_set_txfifo(4, CONFIG_USB_DWC2_TX4_FIFO_SIZE / 4);
 #endif
-#if USB_NUM_BIDIR_ENDPOINTS > 5
+#if CONFIG_USBDEV_EP_NUM > 5
     dwc2_set_txfifo(5, CONFIG_USB_DWC2_TX5_FIFO_SIZE / 4);
 #endif
-#if USB_NUM_BIDIR_ENDPOINTS > 6
+#if CONFIG_USBDEV_EP_NUM > 6
     dwc2_set_txfifo(6, CONFIG_USB_DWC2_TX6_FIFO_SIZE / 4);
 #endif
-#if USB_NUM_BIDIR_ENDPOINTS > 7
+#if CONFIG_USBDEV_EP_NUM > 7
     dwc2_set_txfifo(7, CONFIG_USB_DWC2_TX7_FIFO_SIZE / 4);
 #endif
-#if USB_NUM_BIDIR_ENDPOINTS > 8
+#if CONFIG_USBDEV_EP_NUM > 8
     dwc2_set_txfifo(8, CONFIG_USB_DWC2_TX8_FIFO_SIZE / 4);
 #endif
     USB_OTG_GLB->GAHBCFG |= USB_OTG_GAHBCFG_GINT;
@@ -682,7 +678,6 @@ int usb_dc_init(void)
 
 int usb_dc_deinit(void)
 {
-    usb_dc_low_level_deinit();
     /* Clear Pending interrupt */
     for (uint8_t i = 0U; i < 15U; i++) {
         USB_OTG_INEP(i)->DIEPINT = 0xFB7FU;
@@ -700,6 +695,7 @@ int usb_dc_deinit(void)
 
     USB_OTG_DEV->DCTL |= USB_OTG_DCTL_SDIS;
 
+    usb_dc_low_level_deinit();
     return 0;
 }
 
@@ -731,7 +727,7 @@ int usbd_ep_open(const struct usb_endpoint_descriptor *ep)
 {
     uint8_t ep_idx = USB_EP_GET_IDX(ep->bEndpointAddress);
 
-    if (ep_idx > (USB_NUM_BIDIR_ENDPOINTS - 1)) {
+    if (ep_idx > (CONFIG_USBDEV_EP_NUM - 1)) {
         USB_LOG_ERR("Ep addr %02x overflow\r\n", ep->bEndpointAddress);
         return -1;
     }
@@ -1112,7 +1108,7 @@ void USBD_IRQHandler(void)
             dwc2_flush_txfifo(0x10U);
             dwc2_flush_rxfifo();
 
-            for (uint8_t i = 0U; i < USB_NUM_BIDIR_ENDPOINTS; i++) {
+            for (uint8_t i = 0U; i < CONFIG_USBDEV_EP_NUM; i++) {
                 if (i == 0U) {
                     USB_OTG_INEP(i)->DIEPCTL = USB_OTG_DIEPCTL_SNAK;
                     USB_OTG_OUTEP(i)->DOEPCTL = USB_OTG_DOEPCTL_SNAK;
@@ -1156,7 +1152,7 @@ void USBD_IRQHandler(void)
             daintmask = USB_OTG_DEV->DAINTMSK;
             daintmask >>= 16;
 
-            for (ep_idx = 1; ep_idx < USB_NUM_BIDIR_ENDPOINTS; ep_idx++) {
+            for (ep_idx = 1; ep_idx < CONFIG_USBDEV_EP_NUM; ep_idx++) {
                 if ((BIT(ep_idx) & ~daintmask) || (g_dwc2_udc.out_ep[ep_idx].ep_type != USB_ENDPOINT_TYPE_ISOCHRONOUS))
                     continue;
                 if (!(USB_OTG_OUTEP(ep_idx)->DOEPCTL & USB_OTG_DOEPCTL_USBAEP))
@@ -1178,7 +1174,7 @@ void USBD_IRQHandler(void)
             daintmask = USB_OTG_DEV->DAINTMSK;
             daintmask >>= 16;
 
-            for (ep_idx = 1; ep_idx < USB_NUM_BIDIR_ENDPOINTS; ep_idx++) {
+            for (ep_idx = 1; ep_idx < CONFIG_USBDEV_EP_NUM; ep_idx++) {
                 if (((BIT(ep_idx) & ~daintmask)) || (g_dwc2_udc.in_ep[ep_idx].ep_type != USB_ENDPOINT_TYPE_ISOCHRONOUS))
                     continue;
 

@@ -64,10 +64,6 @@ if GetDepend(['PKG_CHERRYUSB_DEVICE']):
         src += Glob('port/dwc2/usb_dc_dwc2.c')
         if GetDepend(['PKG_CHERRYUSB_DEVICE_DWC2_STM32']):
             src += Glob('port/dwc2/usb_glue_st.c')
-        if GetDepend(['PKG_CHERRYUSB_DEVICE_DWC2_PORT_FS']):
-            CPPDEFINES += ['CONFIG_USB_DWC2_PORT=FS_PORT']
-        elif GetDepend(['PKG_CHERRYUSB_DEVICE_DWC2_PORT_HS']):
-            CPPDEFINES += ['CONFIG_USB_DWC2_PORT=HS_PORT']
 
     if GetDepend(['PKG_CHERRYUSB_DEVICE_MUSB']):
         src += Glob('port/musb/usb_dc_musb.c')
@@ -107,6 +103,8 @@ if GetDepend(['PKG_CHERRYUSB_HOST']):
         src += Glob('class/wireless/usbh_rndis.c')
     if GetDepend(['PKG_CHERRYUSB_HOST_CDC_ECM']):
         src += Glob('class/cdc/usbh_cdc_ecm.c')
+    if GetDepend(['PKG_CHERRYUSB_HOST_BLUETOOTH']):
+        src += Glob('class/wireless/usbh_bluetooth.c')
 
     if GetDepend(['PKG_CHERRYUSB_HOST_DWC2']):
         src += Glob('port/dwc2/usb_hc_dwc2.c')
@@ -140,10 +138,8 @@ if GetDepend(['PKG_CHERRYUSB_HOST']):
     if GetDepend('RT_USING_DFS'):
         src += Glob('third_party/rt-thread-5.0/dfs_usbh_msc.c')
 
-    if GetDepend(['PKG_CHERRYUSB_HOST_CP210X']):
-        path += [cwd + '/class/vendor/cp201x']
-        src += Glob('class/vendor/cp201x/usbh_cp210x.c')
-        src += Glob('third_party/rt-thread-4.1.1/dfs/drv_usbh_cp210x_rtt.c')
+    if GetDepend('PKG_USING_NIMBLE'):
+        src += Glob('third_party/nimble-latest/ble_hci_usbh.c')
 
 src += Glob('third_party/rt-thread-5.0/msh_cmd.c')
 
